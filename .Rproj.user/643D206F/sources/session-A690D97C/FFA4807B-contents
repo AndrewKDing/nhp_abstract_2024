@@ -3,22 +3,24 @@
 #A critical step in this script is the calculation of DPI, conversion to weeks, and back to DPI to resolve any "one-day-off" issues
 
 # // TODO // DPI 231 for ART off is missing from PA's data - follow up?
-# // TODO DPI conversion prior to merging all data files
+# // DPI conversion prior to merging all data files \\ DONE
         # Convert PA data files \\ DONE
-        # Calculate and convert CBC data files \\ TODO
-        # Calculate and convert my flow data files \\ TODO
-# // TODO variable names need to be the same between my data and PA data
+        # Calculate and convert CBC data files \\ DONE
+        # alculate and convert my flow data files \\ DONE 2/2
+# // Converted my variable names to PA variable names \\ DONE
+# // TODO merge all data frames into one frame
+# // TODO cohort needs to calculate dpi earlier or later
+# // TODO check that PA's brdu values are correctly merged
 
-library(dplyr)
-library(tidyr)
-library(ggplot2)
+library(tidyverse)
 library(readxl)
 library(stringr)
 
 #defining a function to cleanup variable names
+#this is a nice function
 cleanup <- function(data){
     df <- data %>%
-    rename_with(~ str_replace_all(., pattern = c("%" = "", "\\+" = "p", "\\-" = "m"))) %>%
+    rename_with(~ str_replace_all(., pattern = c("%" = "", "\\+" = "p", "\\-" = "m", "\\#" = "no_"))) %>%
     rename_with(~ str_replace_all(., "\\s+", "_")) %>% 
     rename_with(~ str_trim(.)) %>%#convert to snake case
     rename_with(tolower) %>% #might as well get rid of uppercase
@@ -55,9 +57,28 @@ cohort <- read_xlsx("./data/cleaned/2024-06-17 cohort.xlsx") %>%
 # - CBC files for necropsy of CSF1R interruption animals    \\ DONE
 # - CBC files from master analysis sheet                    \\ DONE
 
-csf1r_monos <- read_xlsx("./data/cleaned/analysis master 2024-06-27.xlsx", sheet = "monos")
+csf1r_monos <- read_xlsx("./data/cleaned/analysis master 2024-06-27.xlsx", sheet = "monos") %>%
   #renaming variables for consistency w/PA flow
+  rename(c(x14p16m = per_classical, x14p16p = per_intermediate, x14m16p = per_nonclassical)) %>%
+  mutate(animal_id = as.factor(animal_id)) %>% #fixing factor data format
+  mutate(across(where(is.character), ~ case_when(
+    str_detect(., "%") ~ as.numeric(str_replace(., "%", "")) / 100,
+    TRUE ~ as.numeric(.)))) %>%
+  mutate(x14p16m = x14p16m * 100, 
+         x14p16p = x14p16p * 100,
+         x14m16p = x14m16p * 100, #get the percentages as a double, it's how PA's data is
+         dpi = 7 * round(dpi/7, 0), #normalizing data
+         key = str_c(animal_id, dpi, sep="_"), #fixing key value
+         .keep = "none")
+
 csf1r_brdu <- read_xlsx("./data/cleaned/analysis master 2024-06-27.xlsx", sheet = "brdu") %>%
+  rename(brdu_mop = per_brdu) %>%
+  mutate(animal_id = as.factor(animal_id),
+         dpi = 7 * round(dpi/7, 0),
+         key = str_c(animal_id, dpi, sep="_"),
+         animal_id,
+         brdu_mop,
+         .keep = "none")
   #renaming variables for consistency w/PA flow
 
 pa_list <- paste0("./data/raw/", list.files(path="./data/raw/", pattern="PA"))
@@ -68,6 +89,7 @@ pa_flow <- lapply(pa_list, function(file){
         new_name <- str_replace_all(.[1], c("%" = "", "\\+" = "p", "\\-" = "m")) #removes weird characters
         new_name <- str_trim(new_name) #ensures that there aren't any leading spaces
         new_name <- str_replace_all(new_name, "\\s+", "_") #transforms to snake case
+        new_name <- str_replace_all(new_name, "^(\\d)", "x\\1") #a band-aid fix for numeric variables
         .[3] <- new_name #sets the name of the 3rd column to the new name
         . }) %>% #the period returns the vector of column names
       rename(animal_id = names(.)[1], dpi = name) %>%
@@ -75,9 +97,13 @@ pa_flow <- lapply(pa_list, function(file){
       mutate(dpi = as.numeric(
         ifelse(dpi=="PRE",-21,str_extract(dpi, "[[:digit:]]+")))) %>% #If the timepoint is pre, rename to -21. Otherwise, pull out the dpi
       mutate(dpi = 7 * round(dpi/7, 0)) %>% #normalization of DPI
-      mutate_if(is.character, as.factor) 
+      mutate_if(is.character, as.factor)
   })
+
+#the issue is that i need to left join to the cohort sheet, actually.
+testflow <- pa_flow %>% reduce(left_join, by="animal_id")
 #collapse PA data
+#rename variables to be consistent with my variables (there are numbers)
 
 #Makes a list of the data files that start with cbc, then reads and binds_rows for all of them
 cbc_list <- paste0("./data/raw/", list.files(path="./data/raw/", pattern="cbc"))
@@ -85,10 +111,21 @@ cbc_grouped <- bind_rows(lapply(cbc_list, read_xlsx)) %>%
   semi_join(cohort, by = join_by(Animal == animal_id)) %>% #filter out un-needed animal IDs
   left_join(cohort, by = join_by(Animal == animal_id)) %>% #adding in cohort information
   cleanup() %>%
-  rename(animal_id = animal)
-# select necessary variables
-# calculate DPI
-# normalize DPI
+  rename(animal_id = animal) %>%
+  mutate(animal_id, cohort, 
+         dpi = 7 * round(as.numeric((sample_date-infection_date), units="days")/7, 0),
+         no_mono,
+         .keep = "none") %>%
+  #according to filter, nothing between -21 and -35 dpi, makes our life easy graphing pre as -21
+  filter(dpi >= -21)
 
-  #Set variable names to be the same between pa_flow and in my data, so things can be easily merged
+#this is the syntax but do it later
+# testlist <- c(list(cohort), pa_flow) %>%
+#   lapply(function (x) {
+#     x %>% 
+#       mutate(key = str_c(animal_id, dpi), sep="-")
+#   }) %>%
+#   reduce(full_join, by="animal id")
+
+
 
