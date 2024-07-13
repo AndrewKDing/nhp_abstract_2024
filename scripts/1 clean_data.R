@@ -132,7 +132,7 @@ return_data <- function(){
       key,
       animal_id,
       dpi,
-      no_mono,
+      no_mono = as.numeric(no_mono),
       cohort,
       brdu_mop = coalesce(brdu_mop, brdu_mop.x, brdu_mop.y),
       classical = coalesce(x14p16m.x, x14p16m.y),
