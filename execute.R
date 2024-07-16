@@ -100,3 +100,6 @@ p_vals_post <- list(
   linear_test(data_post_blz, "abs_intermediate"),
   linear_test(data_post_blz, "abs_nonclassical"),
   linear_test(data_post_blz, "brdu_mop"))
+
+
+#saving graphs
