@@ -1,6 +1,6 @@
 # ////// PURPOSE: calls data cleaning, graphing, and analyzing functions from other scripts ///////
 # CHECK: There's a seriously strange datapoint at 161dpi that can't possibly be right. 2024-07-13 I'm excluding it for now.
-#Logic:
+# Logic:
 #1. load libraries and source scripts \\ DONE
 #2. Load clean data \\ DONE
 #3. Reorder cohort factor so ART+BLZ is first, rename cohort to ART+BLZ and ART.\\ DONE

@@ -1,0 +1,125 @@
+---
+title: "Rebound in monocytes without increase in %BrdU+ monocytes after BLZ-945 in SIV+ART+ animals"
+output: powerpoint_presentation
+author: Andrew Ding-Su
+date: "2024-07-18"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE)
+source("./scripts/1 clean_data.R")
+source("./scripts/2 graph.R")
+source("./scripts/3 stats.R")
+
+library(tidyverse)
+library(ggplot2)
+library(lme4)
+
+data <- return_data()
+
+#reorder factors here
+data$cohort <- factor(data$cohort, 
+                      levels = c("ART on and off (2022)", "ART+CSF1R late (2023)")) 
+data$cohort <- factor(data$cohort, labels = c("ART", "ART+BLZ"))
+data <- data %>%
+  mutate(abs_classical = no_mono * (classical/100),
+         abs_intermediate = no_mono * (intermediate/100),
+         abs_nonclassical = no_mono * (nonclassical/100),
+         abs_brdu_mop = no_mono * (brdu_mop/100)) %>%
+  ###################ATTENTION#####################
+  #161dpi is being DROPPED, insane outlier on nonclassicals. 2024-07-13#
+  # TODO DISCUSS WITH KW #
+  filter(dpi != 161)
+
+data_blz <- data %>%
+  filter(dpi >= 173, dpi <=203)
+
+data_post_blz <- data %>%
+  filter(dpi >=203)
+```
+
+## Monocyte numbers
+
+```{r graph, fig.cap="test", echo = FALSE, warning = FALSE, }
+long_graph(data, "no_mono") +
+  ylab("Monocytes per uL")
+```
+
+## Total monocyte numbers remain the same during BLZ
+
+```{r graph-3, fig.cap="test", echo = FALSE, warning = FALSE, }
+spaghetti_plot(data_blz, "no_mono") +
+  ylab("Monocytes per uL") +
+  xlab("Day post infection")
+```
+## Monocyte blz stats
+```{r total_mono_blz_stats}
+linear_test(filter(data_blz, cohort=="ART"), "no_mono")
+linear_test(filter(data_blz, cohort=="ART+BLZ"), "no_mono")
+```
+
+## BLZ-945 eliminates CD16+ monocyte populations
+
+```{r graph-2, fig.cap="test", echo = FALSE, warning = FALSE}
+spaghetti_plot(data_blz, "abs_intermediate") +
+  ylab("Monocytes per uL") +
+  xlab("Day post infection")
+
+spaghetti_plot(data_blz, "abs_nonclassical") +
+  ylab("Monocytes per uL") +
+  xlab("Day post infection")
+```
+## Mono subpopulation during BLZ stats, class, int, non
+```{r stats_blz_subset, fig.cap="test", echo = FALSE, warning = FALSE}
+linear_test(filter(data_blz, cohort=="ART+BLZ"), "abs_classical")
+linear_test(filter(data_blz, cohort=="ART+BLZ"), "abs_intermediate")
+linear_test(filter(data_blz, cohort=="ART+BLZ"), "abs_nonclassical")
+```
+
+
+## Slide with Bullets
+```{r stats_blz_post, fig.cap="test", echo = FALSE, warning = FALSE}
+linear_test(filter(data_post_blz, cohort=="ART+BLZ"), "no_mono")
+linear_test(filter(data_post_blz, cohort=="ART+BLZ"), "abs_classical")
+linear_test(filter(data_post_blz, cohort=="ART+BLZ"), "abs_intermediate")
+linear_test(filter(data_post_blz, cohort=="ART+BLZ"), "abs_nonclassical")
+
+linear_test(filter(data_post_blz, cohort=="ART"), "no_mono")
+linear_test(filter(data_post_blz, cohort=="ART"), "abs_classical")
+linear_test(filter(data_post_blz, cohort=="ART"), "abs_intermediate")
+linear_test(filter(data_post_blz, cohort=="ART"), "abs_nonclassical")
+
+graph_0 <- spaghetti_plot(data_post_blz, "abs_classical") +
+  ylab("Monocytes per uL") +
+  xlab("Day post infection")
+
+graph_1 <- spaghetti_plot(data_post_blz, "abs_intermediate") +
+  ylab("Monocytes per uL") +
+  xlab("Day post infection")
+
+graph_2 <- spaghetti_plot(data_post_blz, "abs_nonclassical") +
+  ylab("Monocytes per uL") +
+  xlab("Day post infection")
+
+long_graph(data, "brdu_mop")
+
+```
+
+- Bullet 1
+- Bullet 2
+- Bullet 3
+
+## Slide with R Output
+
+```{r, cars, echo = TRUE}
+summary(cars)
+```
+
+## Slide with Plot
+
+```{r pressure, fig.cap="hello"}
+plot(pressure)
+```
+

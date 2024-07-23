@@ -5,18 +5,23 @@ library(tidyverse)
 library(lme4)
 
 
-linear_test <- function(data, yvar){
+linear_test <- function(data, yvar, output="pval"){
   
-  fm <- as.formula(paste(yvar, " ~ dpi + dpi:cohort + (1|animal_id)"))
+  fm <- as.formula(paste(yvar, " ~ dpi + (1|animal_id)"))
   lm <- lmer(fm, data = data, REML = FALSE)
   
   #interpretation
   #dpi is significant -> change is due to DPI
   #dpi:cohort is significant -> BLZ has an effect
   
-  pval_dpi <- anova(lm, update(lm, . ~ . - dpi - dpi:cohort))$Pr[[2]]
-  pval_interaction <- anova(lm, update(lm, . ~ . - dpi:cohort))$Pr[[2]]
+  pval_dpi <- anova(lm, update(lm, . ~ . -dpi))$Pr[[2]]
   
-  results <- tibble(dpi = pval_dpi, interact = pval_interaction)
-  return(results)
+  if (output == "pval"){
+    return(pval_dpi)
+  }
+  else if(output == "model"){
+    return(lm)
+  }
 }
+
+
